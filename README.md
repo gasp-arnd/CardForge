@@ -1,8 +1,5 @@
 # CardForge
-Modern digital business card generator with live preview and standalone HTML export. 
-# CardForge ✦
-
-**A minimal, self-contained digital business card generator.**  
+Modern digital business card generator with live preview and standalone HTML export.  
 Fill in your info, pick a palette, export a single HTML file — no backend, no account, no install.
 
 > Made by [Gasp-arnd](https://haunt.gg/gasp)

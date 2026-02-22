@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>CardForge — Digital Business Card Generator</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0e0e0e;--surface:#161616;--border:#2a2a2a;
+  --accent:#c8f04d;--accent-dim:#a3c53a;--text:#f0ede8;--muted:#6e6e6e;
+}
+body{
+  background:var(--bg);color:var(--text);font-family:'Instrument Sans',sans-serif;
+  min-height:100vh;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:auto 1fr auto;
+}
+header{
+  grid-column:1/-1;padding:1.6rem 3rem;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:1rem;
+}
+header .logo{font-family:'DM Serif Display',serif;font-size:1.6rem;letter-spacing:-.02em;}
+header .logo span{color:var(--accent);font-style:italic}
+header p{font-family:'DM Mono',monospace;font-size:.72rem;color:var(--muted);margin-left:auto;letter-spacing:.08em;text-transform:uppercase;}
+
+.form-panel{
+  padding:2.5rem 3rem;border-right:1px solid var(--border);
+  overflow-y:auto;display:flex;flex-direction:column;gap:1.5rem;
+}
+.section-title{
+  font-family:'DM Mono',monospace;font-size:.65rem;text-transform:uppercase;
+  letter-spacing:.14em;color:var(--muted);margin-bottom:.6rem;
+}
+.field-group{display:flex;flex-direction:column;gap:1rem}
+label{display:flex;flex-direction:column;gap:.35rem;font-size:.8rem;color:var(--muted);letter-spacing:.03em;}
+input,textarea{
+  background:var(--surface);border:1px solid var(--border);color:var(--text);
+  border-radius:6px;padding:.65rem .9rem;font-family:'Instrument Sans',sans-serif;
+  font-size:.9rem;outline:none;width:100%;transition:border-color .2s,box-shadow .2s;
+}
+input:focus,textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(200,240,77,.1);}
+input.invalid{border-color:#ff7b7b}
+textarea{resize:vertical;min-height:70px}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+.field-error{font-size:.72rem;color:#ff7b7b;display:none;margin-top:2px}
+
+/* Palettes */
+.palette-grid{display:grid;grid-template-columns:repeat(auto-fill,34px);gap:.5rem}
+.palette-btn{
+  width:34px;height:34px;border-radius:50%;border:2px solid transparent;
+  cursor:pointer;transition:transform .15s,border-color .15s;position:relative;flex-shrink:0;
+}
+.palette-btn:hover{transform:scale(1.18)}
+.palette-btn.active{border-color:white;box-shadow:0 0 0 3px rgba(255,255,255,.15)}
+.palette-btn .tip{
+  position:absolute;bottom:calc(100% + 6px);left:50%;transform:translateX(-50%);
+  background:#1e1e1e;border:1px solid var(--border);color:var(--text);
+  font-family:'DM Mono',monospace;font-size:.58rem;white-space:nowrap;
+  padding:.2rem .45rem;border-radius:4px;pointer-events:none;opacity:0;
+  transition:opacity .15s;z-index:10;
+}
+.palette-btn:hover .tip{opacity:1}
+
+/* Avatar upload */
+.avatar-upload{cursor:pointer}
+.avatar-preview{
+  width:88px;height:88px;border-radius:50%;
+  border:2px dashed var(--border);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:.3rem;color:var(--muted);font-size:.62rem;letter-spacing:.04em;
+  transition:border-color .2s,color .2s;overflow:hidden;position:relative;
+  background:var(--surface);
+}
+.avatar-preview:hover{border-color:var(--accent);color:var(--accent)}
+.avatar-preview svg{width:26px;height:26px;opacity:.6}
+.avatar-preview img{
+  width:100%;height:100%;object-fit:cover;position:absolute;inset:0;border-radius:50%;
+}
+.avatar-preview.has-image span,.avatar-preview.has-image svg{display:none}
+
+/* Card avatar */
+.card-header{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem}
+.card-header-text{flex:1;min-width:0}
+.card-avatar{
+  width:64px;height:64px;border-radius:50%;object-fit:cover;
+  flex-shrink:0;border:2px solid rgba(255,255,255,.15);
+}
+
+
+.extra-links-list{display:flex;flex-direction:column;gap:.6rem}
+.extra-link-row{display:flex;gap:.5rem;align-items:center}
+.extra-link-row input{flex:1}
+.remove-btn{
+  background:none;border:1px solid var(--border);color:var(--muted);
+  border-radius:6px;padding:.52rem .7rem;cursor:pointer;font-size:.82rem;
+  transition:color .15s,border-color .15s;flex-shrink:0;line-height:1;
+}
+.remove-btn:hover{color:#ff7b7b;border-color:#ff7b7b}
+.add-link-btn{
+  background:var(--surface);border:1px dashed var(--border);color:var(--muted);
+  border-radius:6px;padding:.6rem 1rem;cursor:pointer;font-size:.82rem;
+  width:100%;text-align:left;transition:border-color .2s,color .2s;
+  font-family:'Instrument Sans',sans-serif;
+}
+.add-link-btn:hover{border-color:var(--accent);color:var(--accent)}
+
+.generate-btn{
+  margin-top:.5rem;background:var(--accent);color:#0e0e0e;font-weight:600;
+  font-size:.95rem;border:none;border-radius:8px;padding:.85rem 1.5rem;
+  cursor:pointer;transition:background .2s,transform .1s;
+}
+.generate-btn:hover{background:var(--accent-dim)}
+.generate-btn:active{transform:scale(.98)}
+
+/* Preview */
+.preview-panel{padding:2.5rem 3rem;display:flex;flex-direction:column;gap:1.5rem;overflow-y:auto;}
+.preview-label{font-family:'DM Mono',monospace;font-size:.65rem;text-transform:uppercase;letter-spacing:.14em;color:var(--muted);}
+.card-stage{flex:1;display:flex;align-items:center;justify-content:center;padding:2rem 0;}
+.biz-card{
+  width:420px;min-height:230px;border-radius:16px;padding:2.2rem 2.4rem;
+  position:relative;overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,.5);
+  transition:transform .3s ease,box-shadow .3s ease;
+}
+.biz-card:hover{transform:translateY(-6px) rotate(-.5deg);box-shadow:0 36px 100px rgba(0,0,0,.6);}
+.card-dot{position:absolute;border-radius:50%;pointer-events:none;filter:blur(60px);}
+.card-name{font-family:'DM Serif Display',serif;font-size:1.9rem;line-height:1.1;letter-spacing:-.02em;margin-bottom:.3rem;}
+.card-title{font-size:.82rem;opacity:.65;font-weight:500;margin-bottom:1.2rem;letter-spacing:.04em;text-transform:uppercase;}
+.card-bio{font-size:.82rem;line-height:1.55;opacity:.75;margin-bottom:1.4rem;max-width:28ch;}
+.card-links{display:flex;flex-wrap:wrap;gap:.45rem;align-items:center}
+.card-link{
+  display:inline-flex;align-items:center;gap:.35rem;font-family:'DM Mono',monospace;
+  font-size:.7rem;padding:.3rem .65rem;border-radius:100px;text-decoration:none;
+  font-weight:500;letter-spacing:.03em;transition:opacity .15s,transform .15s;
+}
+.card-link:hover{opacity:.75;transform:translateY(-1px)}
+.card-link svg{width:12px;height:12px;flex-shrink:0;fill:currentColor}
+.card-divider{width:32px;height:2px;border-radius:4px;margin:1rem 0;opacity:.8}
+
+/* Actions */
+.actions{display:flex;gap:.75rem}
+.action-btn{
+  flex:1;padding:.7rem;border-radius:8px;border:1px solid var(--border);
+  background:var(--surface);color:var(--text);font-size:.85rem;cursor:pointer;
+  transition:background .15s;font-family:'Instrument Sans',sans-serif;
+}
+.action-btn:hover{background:#222}
+.action-btn.primary{background:var(--accent);color:#0e0e0e;border-color:var(--accent);font-weight:600;}
+.action-btn.primary:hover{background:var(--accent-dim);border-color:var(--accent-dim)}
+
+/* Footer */
+footer{
+  grid-column:1/-1;border-top:1px solid var(--border);
+  padding:.85rem 3rem;display:flex;align-items:center;justify-content:flex-end;
+}
+footer a{font-family:'DM Mono',monospace;font-size:.65rem;color:var(--muted);text-decoration:none;letter-spacing:.08em;transition:color .2s;}
+footer a:hover{color:var(--accent)}
+
+@media(max-width:860px){
+  body{grid-template-columns:1fr}
+  .form-panel{border-right:none;border-bottom:1px solid var(--border)}
+  .biz-card{width:100%;max-width:420px}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">Card<span>Forge</span></div>
+  <p>Digital Business Card Generator</p>
+</header>
+
+<!-- ══════════ FORM ══════════ -->
+<section class="form-panel">
+  <div>
+    <p class="section-title">Identity</p>
+    <div class="field-group">
+      <label>
+        Profile picture
+        <div class="avatar-upload" id="avatar-upload">
+          <div class="avatar-preview" id="avatar-preview">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.58-7 8-7s8 3 8 7"/></svg>
+            <span>Click to upload</span>
+          </div>
+          <input type="file" id="avatar-file" accept="image/*" style="display:none">
+        </div>
+      </label>
+      <div class="row">
+        <label>First name<input id="fname" value="Your" autocomplete="given-name"></label>
+        <label>Last name<input id="lname" value="Name" autocomplete="family-name"></label>
+      </div>
+      <label>Job title<input id="job-title" value="Designer & Creative Developer"></label>
+      <label>Short bio<textarea id="bio">Crafting things that feel as good as they look.</textarea></label>
+    </div>
+  </div>
+
+  <div>
+    <p class="section-title">Social & Contact</p>
+    <div class="field-group">
+      <label>
+        Email
+        <input id="email" value="reskowze@gmail.com" type="email" autocomplete="email">
+        <span class="field-error" id="email-error">Invalid email address</span>
+      </label>
+      <label>
+        Website
+        <input id="website" value="https://haunt.gg/gasp">
+        <span class="field-error" id="website-error">Must start with http:// or https://</span>
+      </label>
+      <label>GitHub username<input id="github" value="gasp-arnd" placeholder="username or full URL"></label>
+      <label>LinkedIn handle<input id="linkedin" placeholder="handle or full URL"></label>
+      <label>Twitter / X<input id="twitter" value="@resk0wze" placeholder="@handle or full URL"></label>
+      <label>Instagram<input id="instagram" placeholder="@handle or full URL"></label>
+    </div>
+  </div>
+
+  <div>
+    <p class="section-title">Extra Links</p>
+    <div class="extra-links-list" id="extra-links-list"></div>
+    <button class="add-link-btn" id="add-link-btn">+ Add a link (YouTube, TikTok, Dribbble…)</button>
+  </div>
+
+  <div>
+    <p class="section-title">Card Style <span id="palette-count" style="color:var(--muted);font-style:normal"></span></p>
+    <div class="palette-grid" id="palettes"></div>
+  </div>
+
+  <button class="generate-btn" id="gen-btn">✦ Generate Card</button>
+</section>
+
+<!-- ══════════ PREVIEW ══════════ -->
+<section class="preview-panel">
+  <p class="preview-label">Live Preview</p>
+  <div class="card-stage">
+    <div class="biz-card" id="card">
+      <div class="card-dot" id="card-dot" style="width:180px;height:180px;top:-40px;right:-30px;opacity:.18;"></div>
+      <div class="card-dot" id="card-dot2" style="width:120px;height:120px;bottom:-20px;left:10px;opacity:.1;"></div>
+      <div class="card-header">
+        <div class="card-header-text">
+          <div class="card-name" id="c-name"></div>
+          <div class="card-title" id="c-title"></div>
+        </div>
+        <img class="card-avatar" id="c-avatar" src="" alt="Profile" style="display:none">
+      </div>
+      <div id="divider-container"></div>
+      <div class="card-bio" id="c-bio"></div>
+      <div class="card-links" id="c-links"></div>
+    </div>
+  </div>
+  <div class="actions">
+    <button class="action-btn primary" id="dl-btn">↓ Download Card</button>
+  </div>
+</section>
+
+<footer>
+  <a href="https://haunt.gg/gasp" target="_blank" rel="noopener noreferrer">haunt.gg/gasp</a>
+</footer>
+
+<script>
+// ── SVG icons (inline, fill:currentColor) ─────────────────────────────────────
+const ICONS = {
+  email:    `<svg viewBox="0 0 24 24"><path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4-8 5-8-5V6l8 5 8-5v2z"/></svg>`,
+  website:  `<svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>`,
+  github:   `<svg viewBox="0 0 24 24"><path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg>`,
+  linkedin: `<svg viewBox="0 0 24 24"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 0 1-2.063-2.065 2.064 2.064 0 1 1 2.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>`,
+  twitter:  `<svg viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.746l7.73-8.835L1.254 2.25H8.08l4.259 5.631 5.905-5.631zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>`,
+  instagram:`<svg viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 1 0 0 12.324 6.162 6.162 0 0 0 0-12.324zM12 16a4 4 0 1 1 0-8 4 4 0 0 1 0 8zm6.406-11.845a1.44 1.44 0 1 0 0 2.881 1.44 1.44 0 0 0 0-2.881z"/></svg>`,
+  youtube:  `<svg viewBox="0 0 24 24"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>`,
+  tiktok:   `<svg viewBox="0 0 24 24"><path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.19-3.44-3.37-3.65-5.71-.02-.5-.03-1-.01-1.49.18-1.9 1.12-3.72 2.58-4.96 1.66-1.44 3.98-2.13 6.15-1.72.02 1.48-.04 2.96-.04 4.44-.99-.32-2.15-.23-3.02.37-.63.41-1.11 1.04-1.36 1.75-.21.51-.15 1.07-.14 1.61.24 1.64 1.82 3.02 3.5 2.87 1.12-.01 2.19-.66 2.77-1.61.19-.33.4-.67.41-1.06.1-1.79.06-3.57.07-5.36.01-4.03-.01-8.05.02-12.07z"/></svg>`,
+  dribbble: `<svg viewBox="0 0 24 24"><path d="M12 24C5.385 24 0 18.615 0 12S5.385 0 12 0s12 5.385 12 12-5.385 12-12 12zm10.12-10.358c-.35-.11-3.17-.953-6.384-.438 1.34 3.684 1.887 6.684 1.992 7.308 2.3-1.555 3.936-4.02 4.395-6.87zm-6.115 7.808c-.153-.9-.75-4.032-2.19-7.77l-.066.02c-5.79 2.015-7.86 6.025-8.048 6.39a10.56 10.56 0 0 0 6.29 2.063 10.56 10.56 0 0 0 4.014-.703zm-9.963-2.63c.125-.25 2.233-3.903 7.52-5.604.262-.086.532-.17.802-.24a28.574 28.574 0 0 0-.814-1.707c-4.73 1.4-9.322 1.345-9.73 1.34a10.5 10.5 0 0 0 2.222 6.21zm-2.825-7.99c.42.007 4.28-.002 8.72-1.17-1.563-2.78-3.244-5.118-3.508-5.49a10.56 10.56 0 0 0-5.212 6.66zm7.28-7.537c.27.38 1.982 2.71 3.528 5.548 3.362-1.26 4.785-3.17 4.95-3.4a10.51 10.51 0 0 0-8.478-2.148zm7.822 3.898c-.19.267-1.763 2.304-5.288 3.73.22.45.43.91.622 1.37.07.17.14.34.206.51 3.394-.428 6.77.258 7.1.326a10.54 10.54 0 0 0-2.64-5.936z"/></svg>`,
+  link:     `<svg viewBox="0 0 24 24"><path d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z"/></svg>`,
+};
+
+// ── Palettes ──────────────────────────────────────────────────────────────────
+const PALETTES = [
+  // Dark — vivid
+  { name:'Midnight Lime',   bg:'#111111', text:'#f0ede8', accent:'#c8f04d' },
+  { name:'Blush Noir',      bg:'#1a0f0f', text:'#f5e9e9', accent:'#ff7b7b' },
+  { name:'Ocean Depth',     bg:'#071a2e', text:'#e4f0fc', accent:'#5bc4ff' },
+  { name:'Golden Ember',    bg:'#1a1200', text:'#fff3d4', accent:'#ffb830' },
+  { name:'Violet Dusk',     bg:'#110f1a', text:'#ede8f5', accent:'#b993ff' },
+  { name:'Neon Moss',       bg:'#0b1210', text:'#e0f0ea', accent:'#39e08e' },
+  { name:'Rose Carbon',     bg:'#12100e', text:'#f5ede8', accent:'#ff6b9d' },
+  { name:'Arctic Night',    bg:'#080f18', text:'#ddeeff', accent:'#00d4ff' },
+  { name:'Copper Wire',     bg:'#0f0d0a', text:'#f0ebe3', accent:'#e8844a' },
+  { name:'Electric Plum',   bg:'#0e0a14', text:'#f0e8ff', accent:'#da55ff' },
+  // Dark — muted
+  { name:'Ash & Rust',      bg:'#141210', text:'#e8e0d8', accent:'#c45c3a' },
+  { name:'Storm Petrel',    bg:'#101318', text:'#d8e2ec', accent:'#7aafc4' },
+  { name:'Parchment Night', bg:'#13110e', text:'#f2ead8', accent:'#c9a84c' },
+  { name:'Fog Machine',     bg:'#111315', text:'#dde4ea', accent:'#8ab4c8' },
+  { name:'Absinthe',        bg:'#0d1208', text:'#e8f2e0', accent:'#82c43a' },
+  { name:'Crimson Ink',     bg:'#100a0a', text:'#f5e0e0', accent:'#cc3333' },
+  // Basic / neutral
+  { name:'Pure Black',      bg:'#000000', text:'#ffffff', accent:'#ffffff' },
+  { name:'Pure White',      bg:'#ffffff', text:'#000000', accent:'#000000' },
+  { name:'Warm Gray',       bg:'#1c1c1c', text:'#e8e8e8', accent:'#c0c0c0' },
+  { name:'Cool Gray',       bg:'#f5f5f5', text:'#1a1a1a', accent:'#555555' },
+  { name:'Sepia',           bg:'#1a1510', text:'#f0e8d8', accent:'#d4a96a' },
+  { name:'Chalk',           bg:'#fafafa', text:'#111111', accent:'#111111' },
+  // Light
+  { name:'Sage Concrete',   bg:'#f2f0ed', text:'#1a1a1a', accent:'#4a7c59' },
+  { name:'Glacier',         bg:'#f0f4f8', text:'#1c2b3a', accent:'#0057ff' },
+  { name:'Cream & Ink',     bg:'#f9f6f0', text:'#1c1a17', accent:'#8b3a2a' },
+  { name:'Blush Paper',     bg:'#fdf0f0', text:'#2a1515', accent:'#d63a6e' },
+  { name:'Mint Notepad',    bg:'#eef8f4', text:'#0f2a20', accent:'#1a8c5a' },
+  { name:'Sunbleached',     bg:'#fdfaf2', text:'#2a2015', accent:'#c47e10' },
+  { name:'Lavender Field',  bg:'#f5f0ff', text:'#1a1030', accent:'#6030c8' },
+  { name:'Seafoam Press',   bg:'#eef8f8', text:'#0f2828', accent:'#0a7a7a' },
+];
+
+document.getElementById('palette-count').textContent = `— ${PALETTES.length} palettes`;
+
+let currentPalette = 0;
+let extraLinks = [];
+let extraIdCounter = 0;
+let avatarDataURL = null; // base64 data URL of the uploaded profile picture
+
+// ── Avatar upload ─────────────────────────────────────────────────────────────
+document.getElementById('avatar-upload').addEventListener('click', () => {
+  document.getElementById('avatar-file').click();
+});
+document.getElementById('avatar-file').addEventListener('change', function() {
+  const file = this.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    avatarDataURL = e.target.result;
+    const preview = document.getElementById('avatar-preview');
+    // Remove old img if any
+    preview.querySelectorAll('img').forEach(i => i.remove());
+    const img = document.createElement('img');
+    img.src = avatarDataURL;
+    preview.appendChild(img);
+    preview.classList.add('has-image');
+    generateCard();
+  };
+  reader.readAsDataURL(file);
+});
+
+// ── Utils ─────────────────────────────────────────────────────────────────────
+const esc = str => String(str).replace(/[&<>"']/g, m =>
+  ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+const val = id => document.getElementById(id).value.trim();
+const normalise = url => (!url ? '' : /^https?:\/\//i.test(url) ? url : 'https://' + url);
+
+function strip(raw, patterns) {
+  let s = raw.replace(/^@/, '');
+  for (const p of patterns) s = s.replace(p, '');
+  return s.split('/')[0].split('?')[0];
+}
+const githubUser   = r => strip(r, [/^(?:https?:\/\/)?(?:www\.)?github\.com\//i]);
+const linkedinH    = r => strip(r, [/^(?:https?:\/\/)?(?:www\.)?linkedin\.com\/in\//i]).replace(/\/$/, '');
+const twitterH     = r => strip(r, [/^(?:https?:\/\/)?(?:www\.)?(?:twitter|x)\.com\//i]);
+const instagramH   = r => strip(r, [/^(?:https?:\/\/)?(?:www\.)?instagram\.com\//i]);
+
+function detectIcon(url) {
+  const u = url.toLowerCase();
+  if (u.includes('github'))    return 'github';
+  if (u.includes('linkedin'))  return 'linkedin';
+  if (u.includes('twitter') || u.includes('x.com')) return 'twitter';
+  if (u.includes('instagram')) return 'instagram';
+  if (u.includes('youtube') || u.includes('youtu.be')) return 'youtube';
+  if (u.includes('tiktok'))    return 'tiktok';
+  if (u.includes('dribbble'))  return 'dribbble';
+  return 'link';
+}
+
+// ── Validation ─────────────────────────────────────────────────────────────────
+const validEmail   = e => !e || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
+const validWebsite = u => { if (!u) return true; try { new URL(normalise(u)); return true; } catch { return false; } };
+
+function setFieldValidity(inputId, errorId, ok) {
+  document.getElementById(inputId).classList.toggle('invalid', !ok);
+  document.getElementById(errorId).style.display = ok ? 'none' : 'block';
+}
+function validateAll() {
+  const eOK = validEmail(val('email')), wOK = validWebsite(val('website'));
+  setFieldValidity('email', 'email-error', eOK);
+  setFieldValidity('website', 'website-error', wOK);
+  return eOK && wOK;
+}
+
+// ── Extra links UI ────────────────────────────────────────────────────────────
+document.getElementById('add-link-btn').addEventListener('click', () => addExtraLink());
+
+function addExtraLink(url = '') {
+  const id = ++extraIdCounter;
+  extraLinks.push({ id, url });
+  const list = document.getElementById('extra-links-list');
+  const row = document.createElement('div');
+  row.className = 'extra-link-row';
+  row.dataset.id = id;
+
+  const inp = document.createElement('input');
+  inp.type = 'url'; inp.placeholder = 'https://'; inp.value = url;
+  inp.addEventListener('input', () => {
+    const e = extraLinks.find(l => l.id === id);
+    if (e) e.url = inp.value.trim();
+    generateCard();
+  });
+
+  const del = document.createElement('button');
+  del.className = 'remove-btn'; del.textContent = '✕'; del.setAttribute('aria-label', 'Remove');
+  del.addEventListener('click', () => {
+    extraLinks = extraLinks.filter(l => l.id !== id);
+    row.remove(); generateCard();
+  });
+
+  row.appendChild(inp); row.appendChild(del);
+  list.appendChild(row);
+  inp.focus();
+  generateCard();
+}
+
+// ── Palette grid ──────────────────────────────────────────────────────────────
+const paletteGrid = document.getElementById('palettes');
+PALETTES.forEach((p, i) => {
+  const btn = document.createElement('button');
+  btn.className = 'palette-btn' + (i === 0 ? ' active' : '');
+  btn.style.background = p.accent;
+  btn.setAttribute('aria-label', p.name);
+  const tip = document.createElement('span');
+  tip.className = 'tip'; tip.textContent = p.name;
+  btn.appendChild(tip);
+  btn.addEventListener('click', () => {
+    currentPalette = i;
+    document.querySelectorAll('.palette-btn').forEach((b, j) => b.classList.toggle('active', j === i));
+    generateCard();
+  });
+  paletteGrid.appendChild(btn);
+});
+
+// ── Build link data ───────────────────────────────────────────────────────────
+function buildLinks() {
+  const links = [];
+  const e  = val('email'),    w  = val('website'),
+        gh = val('github'),   li = val('linkedin'),
+        tw = val('twitter'),  ig = val('instagram');
+
+  if (e)  links.push({ icon:'email',    label: e,                        href: 'mailto:' + e });
+  if (w)  links.push({ icon:'website',  label: w,                        href: normalise(w) });
+  if (gh) links.push({ icon:'github',   label: githubUser(gh),           href: 'https://github.com/'      + githubUser(gh) });
+  if (li) links.push({ icon:'linkedin', label: linkedinH(li),            href: 'https://linkedin.com/in/' + linkedinH(li) });
+  if (tw) links.push({ icon:'twitter',  label: '@' + twitterH(tw),       href: 'https://x.com/'           + twitterH(tw) });
+  if (ig) links.push({ icon:'instagram',label: '@' + instagramH(ig),     href: 'https://instagram.com/'   + instagramH(ig) });
+
+  extraLinks.forEach(l => {
+    if (l.url) links.push({ icon: detectIcon(l.url), label: l.url.replace(/^https?:\/\//,''), href: normalise(l.url) });
+  });
+  return links;
+}
+
+// ── Generate preview ──────────────────────────────────────────────────────────
+function generateCard() {
+  if (!validateAll()) return;
+  const p = PALETTES[currentPalette];
+
+  const name  = [val('fname'), val('lname')].filter(Boolean).join(' ') || 'Your Name';
+  const title = val('job-title');
+  const bio   = val('bio');
+
+  document.getElementById('c-name').textContent  = name;
+  document.getElementById('c-title').textContent = title;
+  document.getElementById('c-bio').textContent   = bio;
+
+  // Avatar
+  const avatarEl = document.getElementById('c-avatar');
+  if (avatarDataURL) {
+    avatarEl.src = avatarDataURL;
+    avatarEl.style.display = 'block';
+    avatarEl.style.borderColor = p.accent + '55';
+  } else {
+    avatarEl.style.display = 'none';
+  }
+
+  const card = document.getElementById('card');
+  card.style.background = p.bg;
+  card.style.color = p.text;
+  document.getElementById('card-dot').style.background  = p.accent;
+  document.getElementById('card-dot2').style.background = p.accent;
+
+  document.getElementById('divider-container').innerHTML =
+    (title || bio) ? `<div class="card-divider" style="background:${p.accent}"></div>` : '';
+
+  const linksEl = document.getElementById('c-links');
+  linksEl.innerHTML = '';
+  buildLinks().forEach(l => {
+    const a = document.createElement('a');
+    a.href = l.href; a.className = 'card-link';
+    a.target = '_blank'; a.rel = 'noopener noreferrer';
+    a.style.background = p.accent + '20';
+    a.style.color = p.accent;
+    a.style.border = `1px solid ${p.accent}50`;
+    a.innerHTML = ICONS[l.icon] + esc(l.label);
+    linksEl.appendChild(a);
+  });
+}
+
+// ── Export ────────────────────────────────────────────────────────────────────
+function buildExportHTML() {
+  const p     = PALETTES[currentPalette];
+  const name  = esc([val('fname'), val('lname')].filter(Boolean).join(' ') || 'Your Name');
+  const title = esc(val('job-title'));
+  const bio   = esc(val('bio'));
+  const links = buildLinks();
+
+  const iconSVG = key => ICONS[key] || ICONS.link;
+
+  const linksHTML = links.map(l =>
+    `<a href="${esc(l.href)}" target="_blank" rel="noopener noreferrer" class="card-link">${iconSVG(l.icon)}${esc(l.label)}</a>`
+  ).join('\n        ');
+
+  const divHTML = (title || bio)
+    ? `<div style="width:32px;height:2px;border-radius:4px;margin:1rem 0;background:${esc(p.accent)};opacity:.8;"></div>`
+    : '';
+
+  const avatarHTML = avatarDataURL
+    ? `<img src="${avatarDataURL}" alt="Profile" style="width:64px;height:64px;border-radius:50%;object-fit:cover;flex-shrink:0;border:2px solid ${esc(p.accent)}55;">`
+    : '';
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${name}</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    body{min-height:100vh;display:flex;align-items:center;justify-content:center;background:#0e0e0e;padding:2rem;font-family:'Instrument Sans',sans-serif;}
+    .biz-card{width:420px;min-height:230px;border-radius:16px;padding:2.2rem 2.4rem;position:relative;overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,.5);transition:transform .3s,box-shadow .3s;}
+    .biz-card:hover{transform:translateY(-6px) rotate(-.5deg);box-shadow:0 36px 100px rgba(0,0,0,.6);}
+    .dot{position:absolute;border-radius:50%;pointer-events:none;filter:blur(60px);}
+    .card-header{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;}
+    .card-header-text{flex:1;min-width:0;}
+    .card-name{font-family:'DM Serif Display',serif;font-size:1.9rem;line-height:1.1;letter-spacing:-.02em;margin-bottom:.3rem;}
+    .card-title{font-size:.82rem;opacity:.65;font-weight:500;margin-bottom:1.2rem;letter-spacing:.04em;text-transform:uppercase;}
+    .card-bio{font-size:.82rem;line-height:1.55;opacity:.75;margin-bottom:1.4rem;max-width:28ch;}
+    .card-links{display:flex;flex-wrap:wrap;gap:.45rem;align-items:center;}
+    .card-link{display:inline-flex;align-items:center;gap:.35rem;font-family:'DM Mono',monospace;font-size:.7rem;padding:.3rem .65rem;border-radius:100px;text-decoration:none;font-weight:500;letter-spacing:.03em;transition:opacity .15s,transform .15s;background:${esc(p.accent)}20;color:${esc(p.accent)};border:1px solid ${esc(p.accent)}50;}
+    .card-link:hover{opacity:.75;transform:translateY(-1px);}
+    .card-link svg{width:12px;height:12px;flex-shrink:0;fill:currentColor;}
+    footer{position:fixed;bottom:1rem;right:1.5rem;}
+    footer a{font-family:'DM Mono',monospace;font-size:.65rem;color:#6e6e6e;text-decoration:none;letter-spacing:.08em;transition:color .2s;}
+    footer a:hover{color:${esc(p.accent)}}
+  </style>
+</head>
+<body>
+  <div class="biz-card" style="background:${esc(p.bg)};color:${esc(p.text)};">
+    <div class="dot" style="width:180px;height:180px;top:-40px;right:-30px;opacity:.18;background:${esc(p.accent)};"></div>
+    <div class="dot" style="width:120px;height:120px;bottom:-20px;left:10px;opacity:.1;background:${esc(p.accent)};"></div>
+    <div class="card-header">
+      <div class="card-header-text">
+        <div class="card-name">${name}</div>
+        ${title ? `<div class="card-title">${title}</div>` : ''}
+      </div>
+      ${avatarHTML}
+    </div>
+    ${divHTML}
+    ${bio   ? `<div class="card-bio">${bio}</div>`   : ''}
+    ${links.length ? `<div class="card-links">\n        ${linksHTML}\n      </div>` : ''}
+  </div>
+  <footer><a href="https://haunt.gg/gasp" target="_blank" rel="noopener noreferrer">haunt.gg/gasp</a></footer>
+</body>
+</html>`;
+}
+
+document.getElementById('dl-btn').addEventListener('click', function() {
+  if (!validateAll()) return;
+  const blob = new Blob([buildExportHTML()], { type:'text/html;charset=utf-8' });
+  const url  = URL.createObjectURL(blob);
+  const a    = Object.assign(document.createElement('a'), { href:url, download:'business-card.html' });
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 10_000);
+});
+
+// Live update
+document.querySelectorAll('input, textarea').forEach(el => el.addEventListener('input', generateCard));
+
+// Init
+generateCard();
+</script>
+</body>
+</html>
